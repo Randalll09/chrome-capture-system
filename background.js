@@ -112,7 +112,7 @@ async function captureArea(tab, { rect, single, hideFixed }) {
   busy = true;
   const tabId = tab.id;
   try {
-    const info = await exec(tabId, pagePrepare);
+    const info = await exec(tabId, pagePrepare, [!rect && !single]);
     const area = normalizeRect(rect || { x: 0, y: 0, w: info.docW, h: info.docH }, info);
     if (area.w < 1 || area.h < 1) throw new Error('캡처할 영역이 비어 있습니다.');
 
@@ -161,7 +161,7 @@ async function captureArea(tab, { rect, single, hideFixed }) {
       if (x1 > x0 && y1 > y0) {
         ctx.drawImage(
           bmp,
-          (x0 - scroll.sx) * ratio, (y0 - scroll.sy) * ratio,
+          (info.ox + x0 - scroll.sx) * ratio, (info.oy + y0 - scroll.sy) * ratio,
           (x1 - x0) * ratio, (y1 - y0) * ratio,
           Math.round((x0 - area.x) * scale), Math.round((y0 - area.y) * scale),
           Math.round((x1 - x0) * scale), Math.round((y1 - y0) * scale)
@@ -232,7 +232,7 @@ async function reportError(tabId, err) {
 
 // ─────────────── 아래 함수들은 페이지 안에서 실행됩니다 ───────────────
 
-function pagePrepare() {
+function pagePrepare(findScroller) {
   const de = document.documentElement;
   const body = document.body || de;
   if (!window.__capState) {
@@ -241,14 +241,57 @@ function pagePrepare() {
       sy: window.scrollY,
       behavior: de.style.scrollBehavior,
       hidden: [],
+      scroller: null,
     };
   }
+  const st = window.__capState;
   de.style.setProperty('scroll-behavior', 'auto', 'important');
+
+  // 창(window)은 스크롤되지 않고 안쪽 박스만 스크롤되는 페이지(웹앱, 문서 뷰어 등)는
+  // 화면에서 가장 넓게 보이는 스크롤 박스를 찾아 그 박스를 스크롤하며 캡처
+  const windowScrolls = Math.max(de.scrollHeight, body.scrollHeight) > window.innerHeight + 2;
+  if (findScroller && !windowScrolls) {
+    let best = null;
+    let bestArea = 0;
+    for (const el of document.querySelectorAll('body *')) {
+      if (el.scrollHeight <= el.clientHeight + 20 || el.clientHeight < 100) continue;
+      const oy = getComputedStyle(el).overflowY;
+      if (oy !== 'auto' && oy !== 'scroll' && oy !== 'overlay') continue;
+      const r = el.getBoundingClientRect();
+      const w = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
+      const h = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+      const area = Math.max(0, w) * Math.max(0, h);
+      if (area > bestArea) { best = el; bestArea = area; }
+    }
+    if (best) {
+      if (!st.scroller) {
+        st.scroller = { el: best, sx: best.scrollLeft, sy: best.scrollTop, behavior: best.style.scrollBehavior };
+      }
+      best.style.setProperty('scroll-behavior', 'auto', 'important');
+      const r = best.getBoundingClientRect();
+      const ox = Math.max(0, r.left + best.clientLeft);
+      const oy = Math.max(0, r.top + best.clientTop);
+      return {
+        sx: best.scrollLeft,
+        sy: best.scrollTop,
+        ox,
+        oy,
+        vw: Math.min(best.clientWidth, window.innerWidth - ox),
+        vh: Math.min(best.clientHeight, window.innerHeight - oy),
+        iw: window.innerWidth,
+        docW: best.scrollWidth,
+        docH: best.scrollHeight,
+      };
+    }
+  }
+
   const vw = de.clientWidth || window.innerWidth;
   const vh = de.clientHeight || window.innerHeight;
   return {
     sx: window.scrollX,
     sy: window.scrollY,
+    ox: 0,
+    oy: 0,
     vw,
     vh: Math.min(vh, window.innerHeight),
     iw: window.innerWidth,
@@ -258,6 +301,13 @@ function pagePrepare() {
 }
 
 async function pageScrollTo(x, y) {
+  const sc = window.__capState?.scroller?.el;
+  if (sc) {
+    sc.scrollTo(x, y);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise((r) => setTimeout(r, 120));
+    return { sx: sc.scrollLeft, sy: sc.scrollTop };
+  }
   window.scrollTo(x, y);
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await new Promise((r) => setTimeout(r, 120)); // 지연 로딩 이미지/애니메이션 대기
@@ -268,10 +318,12 @@ function pageHideFixed() {
   const st = window.__capState;
   if (!st) return;
   const target = document.querySelector('[data-cap-target]');
+  const scroller = st.scroller?.el;
   for (const el of document.querySelectorAll('body *')) {
     const pos = getComputedStyle(el).position;
     if (pos !== 'fixed' && pos !== 'sticky') continue;
     if (target && (el.contains(target) || target.contains(el))) continue;
+    if (scroller && el.contains(scroller)) continue; // 스크롤 박스 자체나 그 부모는 숨기지 않음
     st.hidden.push([el, el.style.getPropertyValue('visibility'), el.style.getPropertyPriority('visibility')]);
     el.style.setProperty('visibility', 'hidden', 'important');
   }
@@ -289,5 +341,11 @@ function pageRestore() {
   if (st.behavior) de.style.scrollBehavior = st.behavior;
   else de.style.removeProperty('scroll-behavior');
   window.scrollTo(st.sx, st.sy);
+  if (st.scroller) {
+    const { el, sx, sy, behavior } = st.scroller;
+    if (behavior) el.style.scrollBehavior = behavior;
+    else el.style.removeProperty('scroll-behavior');
+    el.scrollTo(sx, sy);
+  }
   delete window.__capState;
 }
