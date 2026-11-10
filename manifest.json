@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "간편 캡처",
+  "description": "전체 페이지, 보이는 영역, 요소 선택, 영역 지정 캡처와 간단한 편집(자르기, 글씨, 도형)을 지원합니다.",
+  "version": "1.0.0",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "간편 캡처",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "capture-visible": {
+      "suggested_key": { "default": "Alt+Shift+V" },
+      "description": "보이는 영역 캡처"
+    },
+    "capture-full": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "전체 페이지 캡처"
+    },
+    "capture-element": {
+      "suggested_key": { "default": "Alt+Shift+E" },
+      "description": "요소 선택 캡처"
+    },
+    "capture-region": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "영역 지정 캡처"
+    }
+  }
+}

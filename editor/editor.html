@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>캡처 편집기</title>
+  <link rel="icon" href="../icons/icon32.png" />
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <header class="toolbar">
+    <div class="group" role="toolbar" aria-label="도구">
+      <button class="tool" data-tool="crop" title="자르기 (C)">
+        <svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></svg><span>자르기</span>
+      </button>
+      <button class="tool" data-tool="text" title="글씨 (T)">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M9 19h6"/></svg><span>글씨</span>
+      </button>
+      <button class="tool" data-tool="ellipse" title="동그라미 (O) · Shift: 정원">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg><span>동그라미</span>
+      </button>
+      <button class="tool active" data-tool="rect" title="네모 (R) · Shift: 정사각형">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/></svg><span>네모</span>
+      </button>
+      <button class="tool" data-tool="pen" title="펜 (P)">
+        <svg viewBox="0 0 24 24"><path d="M3 21l3.5-1 11-11-2.5-2.5-11 11zM14 6l2.5 2.5"/></svg><span>펜</span>
+      </button>
+    </div>
+
+    <div class="group options">
+      <div class="swatches" role="radiogroup" aria-label="색상">
+        <button class="swatch active" style="--c:#ff3b30" data-color="#ff3b30" title="빨강"></button>
+        <button class="swatch" style="--c:#ffcc00" data-color="#ffcc00" title="노랑"></button>
+        <button class="swatch" style="--c:#34c759" data-color="#34c759" title="초록"></button>
+        <button class="swatch" style="--c:#0a84ff" data-color="#0a84ff" title="파랑"></button>
+        <button class="swatch" style="--c:#111111" data-color="#111111" title="검정"></button>
+        <button class="swatch" style="--c:#ffffff" data-color="#ffffff" title="흰색"></button>
+        <label class="custom" title="다른 색상"><input type="color" id="color" value="#ff3b30" /></label>
+      </div>
+      <label class="field" id="widthField">두께
+        <select id="lineWidth">
+          <option value="2">얇게</option>
+          <option value="4" selected>보통</option>
+          <option value="7">굵게</option>
+          <option value="12">아주 굵게</option>
+        </select>
+      </label>
+      <label class="field" id="fontField">글자
+        <select id="fontSize">
+          <option value="14">작게</option>
+          <option value="20" selected>보통</option>
+          <option value="30">크게</option>
+          <option value="44">아주 크게</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="group">
+      <button id="undo" class="icon" title="실행 취소 (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+      </button>
+      <button id="redo" class="icon" title="다시 실행 (Ctrl+Shift+Z)" disabled>
+        <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+      </button>
+      <span class="sep"></span>
+      <button id="zoomOut" class="icon" title="축소 (-)"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button id="zoomFit" class="zoom" title="화면에 맞추기 (0)">100%</button>
+      <button id="zoomIn" class="icon" title="확대 (+)"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
+    </div>
+
+    <div class="group end">
+      <span id="dims" class="dims"></span>
+      <button id="copy" class="secondary" title="클립보드에 복사 (Ctrl+C)">복사</button>
+      <button id="save" class="primary" title="PNG로 저장 (Ctrl+S)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>저장
+      </button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <div id="wrap">
+      <canvas id="base"></canvas>
+      <canvas id="overlay"></canvas>
+      <textarea id="textInput" spellcheck="false" hidden></textarea>
+      <div id="cropBar" hidden>
+        <button id="cropApply" class="primary">자르기 적용 <kbd>Enter</kbd></button>
+        <button id="cropCancel" class="secondary">취소 <kbd>Esc</kbd></button>
+      </div>
+    </div>
+    <p id="message" hidden></p>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="editor.js"></script>
+</body>
+</html>
